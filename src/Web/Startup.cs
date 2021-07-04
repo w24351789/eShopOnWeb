@@ -20,6 +20,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -215,8 +217,21 @@ namespace Microsoft.eShopWeb.Web
             app.UseHttpsRedirection();
             app.UseBlazorFrameworkFiles();
             app.UseStaticFiles();
-            app.UseRouting();
+            app.UseSerilogRequestLogging(options =>
+            {
+                // 自定義訊息模板
+                options.MessageTemplate = "Handled {RequestPath}";
+                // 發出除錯級別的事件，而不是預設事件
+                options.GetLevel = (httpContext, elapsed, ex) => LogEventLevel.Debug;
+                //將其他屬性附加到請求完成事件
+                options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+                {
+                    diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+                    diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+                };
+            });
 
+            app.UseRouting();
             app.UseCookiePolicy();
             app.UseAuthentication();
             app.UseAuthorization();
